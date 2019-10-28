@@ -1,0 +1,2 @@
+module Squid.Util where
+

@@ -7,10 +7,17 @@
 ## Intro
 
 Squid is a type safe EDSL for SQL thats aims to replicate the Persistent-Esqueleto API without the
-use of template haskell.
+use of Template Haskell.
 
-Squid makes use of Generic programming and type level programming to provide a similar user facing
-API to that of Persistent - Esqueleto.
+Squid makes use of Generic programming and type level programming to provide a similar sql query
+API to that of Persistent-Esqueleto.
+
+## Motivation
+
+Squid is built for those who love the Esqueleto persistent sql query EDSL but wish they had the following:
+
+- A non TH way of specifying table entities.
+- A namespace that's not littered with new compile generated Template Haskell generated types and values.
 
 ## Comparison between Persistent-Esqueleto and Squid
 
@@ -53,29 +60,14 @@ getPerson = do
 
 ```haskell ignore
 
-  type instance PersistDB = "ExampleDb"
+  type instance PersistDB = ["Person", "BlogPost"] -- useful for migration / optional
 
   -- | Primary keys are automatically created just like in Persistent.
-  data PersonEntity f = PersonEntity
-    { personName :: f String
-    , personAge :: f (Maybe Int)
-    } deriving (Eq, Show, Generic, PersistEntity "ExampleDb")
-
-  type Person = PersonEntity Identity
-
-  data BlogPostEntity f = BlogPostEntity
-    { blogPostTitle :: f (Unique String) -- unique is a type family
-    , blogPostauthorId :: f (EntityId Person) -- type family -- foreign Key constraint
-    } deriving (Eq, Show, Generic, PersistEntity "ExampleDb")
-
-  type BlogPost = BlogPostEntity Identity
-
-  data FollowEntity f = FollowEntity
-    { followFollower :: f (EntityId Person)
-    , followFollowed :: f (EntityId Person)
-    } (Eq, Show, Generic, PersistEntity "ExampleDb")
-
-  type Follow = FollowEntity Identity
+  -- Although, tts possible to specify an entity field as a primary key
+  data Person = Person
+    { personName :: String
+    , personAge :: Maybe Int
+    } deriving (Eq, Show, Generic, HasEntity)
 
   -- | Generates SELECT * FROM Person
   getPersons :: SqlPersist m ()
@@ -92,7 +84,7 @@ getPerson :: SqlPersist m Person
 getPerson = do
   select $
     from $ \p -> do
-    where_ (p ^. field "personAge" >=. just (val 18))
+    where_ (p ^. field @"personAge" >=. just (val 18))
     return p
 
 ```

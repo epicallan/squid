@@ -24,7 +24,7 @@ source-repository head
 
 library
   exposed-modules:
-      Data.Squid
+      DataBase.Squid
   default-extensions: LambdaCase DeriveGeneric FlexibleInstances FlexibleContexts ScopedTypeVariables TypeApplications TypeOperators MultiParamTypeClasses RecordWildCards TypeApplications TypeFamilies OverloadedStrings GADTs GeneralizedNewtypeDeriving FunctionalDependencies ConstraintKinds RankNTypes PolyKinds DataKinds KindSignatures ViewPatterns UndecidableInstances StrictData
   build-depends:
     base                 >= 4.10.1 && < 5,
@@ -77,5 +77,6 @@ test-suite spec
       Squid.FailSpec
     , Squid.SuccessSpec
     , Squid.Util
-  build-tool-depends:  hspec-discover >= 2.6.0 && <2.8
+  build-tool-depends:
+      hspec-discover:hspec-discover >= 2.6.0 && <2.8
   default-language:    Haskell2010

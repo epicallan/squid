@@ -3,13 +3,12 @@ module DataBase.Corec where
 
 import Data.Kind (Type)
 import Data.Proxy
--- import DataBase.TypeLevel
 import GHC.TypeLits
 
-import DataBase.Column (TableField (..))
+import DataBase.Table (Column (..))
 
 data Corec (ts :: [(Symbol, Type)]) :: Type where
-  Stop :: KnownSymbol s => TableField '(s, a) -> Corec ('(s, a) ': ts)
+  Stop :: KnownSymbol s => Column '(s, a) -> Corec ('(s, a) ': ts)
   Skip :: KnownSymbol s => Corec ts -> Corec ('(s, a) ': ts)
 
 class ElemOf ts (field :: Symbol) where
@@ -17,7 +16,7 @@ class ElemOf ts (field :: Symbol) where
 
 instance {-# OVERLAPPING #-} (a' ~ a, KnownSymbol s)
   => ElemOf ('(s, a) ': rs) s where
-  inject _ = Stop (TableField @'(s, a))
+  inject _ = Stop (Column @'(s, a))
 
 instance (KnownSymbol s', ElemOf ts s)
   => ElemOf ( '(s', a') ': ts) s where

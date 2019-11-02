@@ -5,25 +5,19 @@
 module DataBase.Internal where
 
 -- import Data.Kind
-import DataBase.Corec
+-- import DataBase.Corec
+import DataBase.HasEntity
 import DataBase.HasSqlValue
-import DataBase.TypeLevel
--- import DataBase.HasEntity
+-- import DataBase.TypeLevel
 import GHC.Generics
 -- import Control.Monad.Reader
-import Data.Proxy
-import DataBase.Column
-import DataBase.HasEntity
+-- import Data.Proxy
+import DataBase.Table
 import GHC.TypeLits
 
 type family DataBase :: Symbol
 
 type instance DataBase = "MyDB"
-
-data User = User
-  { name :: String
-  , age  :: Int
-  } deriving (Show, Eq, Generic)
 
 -- | for each data type used as a Model we obtain a type level list
 -- containing its fields and related type. See HasEntity class
@@ -40,7 +34,15 @@ data Sql a =
   | Insert a
   | Where Relation a
 
--- -----------------****--------------------------------------***
+-- -----------------Example-----------------------***
+
+data User = User
+  { name :: String
+  , age  :: Int
+  , sex  :: String
+  } deriving (Show, Eq, Generic, HasEntity)
+
+
 {-
  -- we want to person to represent something similar to lenses
  -- ^. is like an accessor operator on a lens
@@ -50,7 +52,7 @@ data Sql a =
 select $ from
        $ \ person -> do -- person is not exactly the generic original data type
             -- it can be a generically derived associated data type
-            -- For our case its going to be (Table ts)
+            -- For our case its going to be an Hlist (Table ts)
 
             -- we can project values from person
             where_ (person ^. field "name" ==. "Allan") -- same monad
@@ -66,17 +68,17 @@ run in the DB monad.
 
 -- | projections into some type like person as in the select example above
 -- gives us a corec value at which we can obtain a field symbol and its related type.
-(^.) :: forall f fs sing . (ElemOf fs f) => Table fs -> sing (IsTableField f fs) -> Corec fs
-(^.) _ _ = inject (Proxy @f)
+-- (^.) :: forall f fs sing . (ElemOf fs f) => Table fs -> sing (IsTableField f fs) -> Corec fs
+-- (^.) _ _ = inject (Proxy @f)
 
-(==.)
-  :: forall a s ts. (HasSqlValue a, KnownSymbol s)
-  => Corec ( '(s, a) ': ts)
-  -> a
-  -> Relation
-(==.) corec x = case corec of
-  Stop TableField -> MkRelation QEq fieldName x
-  Skip _          -> error "GHC error shouldn't happen"
-  where
-    fieldName :: String
-    fieldName = symbolVal (Proxy @s)
+-- (==.)
+--   :: forall a s ts. (HasSqlValue a, KnownSymbol s)
+--   => Corec ( '(s, a) ': ts)
+--   -> a
+--   -> Relation
+-- (==.) corec x = case corec of
+--   Stop Column -> MkRelation QEq fieldName x
+--   Skip _          -> error "GHC error shouldn't happen"
+--   where
+--     fieldName :: String
+--     fieldName = symbolVal (Proxy @s)

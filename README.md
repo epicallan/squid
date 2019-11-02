@@ -10,14 +10,15 @@ Squid is a type safe EDSL for SQL thats aims to replicate the Persistent-Esquele
 use of Template Haskell.
 
 Squid makes use of Generic programming and type level programming to provide a similar sql query
-API to that of Persistent-Esqueleto.
+API to that of Persistent-Esqueleto. In a way Squid is very similar to Selda as far as general approach is concerned.
 
 ## Motivation
 
-Squid is built for those who love the Esqueleto persistent sql query EDSL but wish they had the following:
+Squid is built for those who love Persistent-Esqueleto but wish they had the following:
 
 - A non TH way of specifying table entities.
-- A namespace that's not littered with new compile generated Template Haskell generated types and values.
+- A namespace that's not littered with new compile generated Template Haskell generated types.
+- A minimal and flexible API
 
 ## Comparison between Persistent-Esqueleto and Squid
 
@@ -54,6 +55,7 @@ getPerson = do
     where_ (p ^. PersonAge >=. just (val 18))
     return p
 
+
 ```
 
 ### Squid
@@ -69,6 +71,16 @@ getPerson = do
     , personAge :: Maybe Int
     } deriving (Eq, Show, Generic, HasEntity)
 
+  data BlogPost = BlogPost
+    { blogPostTitle :: String
+    , blogPostAuthor :: Int
+     -- ^ Foreign key constraint is represented via HasEntity Class instance
+    } deriving (Eq, Show, Generic)
+
+  instance HasEntity BlogPost where
+    type ForeignKeys = '[ '("blogPostAuthor", Person) ]
+
+
   -- | Generates SELECT * FROM Person
   getPersons :: SqlPersist m ()
   getPersons = do
@@ -77,15 +89,23 @@ getPerson = do
                 return person
     liftIO $ mapM_ (putStrLn . personName . entityVal) people
 
--- | SELECT *
--- FROM Person
--- WHERE Person.age >= 18
-getPerson :: SqlPersist m Person
-getPerson = do
-  select $
-    from $ \p -> do
-    where_ (p ^. field @"personAge" >=. just (val 18))
-    return p
+  -- | SELECT *
+  -- FROM Person
+  -- WHERE Person.age >= 18
+  getPerson :: SqlPersist m Person
+  getPerson = do
+    select $
+      from $ \p -> do
+      where_ (p ^. field @"personAge" >=. just (val 18))
+      return p
+
+  -- | You can as well use overloaded labels to access values
+  getPerson' :: SqlPersist m Person
+  getPerson' = do
+    select $
+      from $ \p -> do
+      where_ (p ^. #personAge >=. just (val 18))
+      return p
 
 ```
 

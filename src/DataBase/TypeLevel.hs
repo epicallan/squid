@@ -32,8 +32,8 @@ type family HasTotalFieldP (field :: Symbol) f :: Maybe Type where -- We need th
   HasTotalFieldP field V1
     = 'Nothing
 
-type family IsTableField (field :: Symbol) (ts :: [(Symbol, Type)]) :: Symbol where
-   IsTableField x '[] = TypeError ('Text "Error provided type is not in list")
-   IsTableField x ( '(x, t) ': ts) = x
-   IsTableField x ( '(s, t) ': ts ) = IsTableField x ts
 
+
+type family (x :: [k]) ++ (y :: [k]) :: [k] where
+  '[] ++ ys = ys
+  (x ': xs) ++ ys = x ': (xs ++ ys)

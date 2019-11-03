@@ -8,7 +8,7 @@ module DataBase.Internal where
 -- import DataBase.Corec
 import DataBase.HasEntity
 import DataBase.HasSqlValue
--- import DataBase.TypeLevel
+import DataBase.Table
 import GHC.Generics
 -- import Control.Monad.Reader
 -- import Data.Proxy
@@ -42,6 +42,11 @@ data User = User
   , sex  :: String
   } deriving (Show, Eq, Generic, HasEntity)
 
+-- Testing projection into some user table
+
+userTable :: Table (EntityFields User)
+userTable = undefined
+
 
 {-
  -- we want to person to represent something similar to lenses
@@ -70,6 +75,8 @@ run in the DB monad.
 -- gives us a corec value at which we can obtain a field symbol and its related type.
 -- (^.) :: forall f fs sing . (ElemOf fs f) => Table fs -> sing (IsTableField f fs) -> Corec fs
 -- (^.) _ _ = inject (Proxy @f)
+
+
 
 -- (==.)
 --   :: forall a s ts. (HasSqlValue a, KnownSymbol s)

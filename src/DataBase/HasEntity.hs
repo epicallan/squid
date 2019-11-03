@@ -22,7 +22,8 @@ class
   , ForeignKeyConstraint (ForeignKeys a) (EntityFields a)
   ) => HasEntity a where
   type EntityFields a ::  [ (Symbol, Type) ]
-  type EntityFields a = GEntityFields (Rep a)
+  -- ^ user can provide own type essentially own database interpretation
+  type EntityFields a = PrimaryKey a ': GEntityFields (Rep a)
 
   type TableName a :: Symbol
   type TableName a =  HasTableName (Rep a)
@@ -41,8 +42,17 @@ class
   tableName = symbolVal (Proxy @(TableName a))
 
   entity :: a -> Table (EntityFields a)
-  default entity :: (GEntityFields (Rep a) ~  (EntityFields a)) => a -> Table (EntityFields a)
-  entity x = gentity (from x)
+  -- ^  we want to be able to create Table (EntityFields a) without the
+  -- need of the 'a' argument
+  -- entity :: Table (EntityFields a)
+  -- entity = Table
+  default entity
+    :: ((PrimaryKey a ': GEntityFields (Rep a)) ~ EntityFields a)
+    => a -> Table (EntityFields a)
+  entity x = primaryKeyColumn :. gentity (from x)
+    where
+      primaryKeyColumn :: Column (PrimaryKey a)
+      primaryKeyColumn = Column
 
 class GHasEntity rep where
   type GEntityFields rep :: [ (Symbol, Type) ]

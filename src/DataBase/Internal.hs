@@ -56,6 +56,7 @@ nameEx = userTable ^. Field @"name"
 equalityExample :: Table (TableFields User) -> Relation
 equalityExample x = x ^. Field @"name" ==. "Allan"
 
+-- | example query
 exampleQuery :: Sql User ()
 exampleQuery =
   select $ from $ \ p -> where_ ( p ^. Field @"name" ==. "Allan")

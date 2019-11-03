@@ -65,7 +65,7 @@ getPerson = do
   type instance PersistDB = ["Person", "BlogPost"] -- useful for migration / optional
 
   -- | Primary keys are automatically created just like in Persistent.
-  -- Although, tts possible to specify an entity field as a primary key
+  -- Its still possible to set your own primary key.
   data Person = Person
     { personName :: String
     , personAge :: Maybe Int
@@ -74,20 +74,11 @@ getPerson = do
   data BlogPost = BlogPost
     { blogPostTitle :: String
     , blogPostAuthor :: Int
-     -- ^ Foreign key constraint is represented via HasEntity Class instance
     } deriving (Eq, Show, Generic)
-
+  
+  -- | writing instance explicitely to represent foreign key constraint
   instance HasEntity BlogPost where
     type ForeignKeys = '[ '("blogPostAuthor", Person) ]
-
-
-  -- | Generates SELECT * FROM Person
-  getPersons :: SqlPersist m ()
-  getPersons = do
-    people <- select $
-                from $ \person -> do
-                return person
-    liftIO $ mapM_ (putStrLn . personName . entityVal) people
 
   -- | SELECT *
   -- FROM Person
@@ -99,7 +90,7 @@ getPerson = do
       where_ (p ^. Field @"personAge" >=. just (val 18))
       return p
 
-  -- | You can as well use overloaded labels to access values
+  -- | You can as well use overloadedlabels to access values
   getPerson' :: SqlPersist m Person
   getPerson' = do
     select $

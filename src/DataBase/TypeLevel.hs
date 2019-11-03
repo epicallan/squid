@@ -32,8 +32,6 @@ type family HasTotalFieldP (field :: Symbol) f :: Maybe Type where -- We need th
   HasTotalFieldP field V1
     = 'Nothing
 
-
-
 type family (x :: [k]) ++ (y :: [k]) :: [k] where
   '[] ++ ys = ys
   (x ': xs) ++ ys = x ': (xs ++ ys)

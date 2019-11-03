@@ -2,7 +2,7 @@ module DataBase.HasSqlValue where
 
 import Data.Kind
 
-class HasSqlValue a where
+class Show a => HasSqlValue a where
   type SqlValue a :: Type
   toSqlValue :: a -> SqlValue a
 

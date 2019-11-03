@@ -1,6 +1,7 @@
 module DataBase.Table where
 
 import Data.Kind (Type)
+import Data.Proxy
 import DataBase.TypeLevel
 import GHC.TypeLits
 
@@ -10,13 +11,28 @@ type FieldName = String
 
 data Field (a :: Symbol) = Field
 
-type a  ::: b = '(a, b)
+type a  := b = '(a, b)
 
 infixr 7 :.
 
 data Table (a :: [(Symbol, Type)]) where
   Nil  :: Table '[]
   (:.) :: Column x -> Table xs -> Table (x ': xs)
+
+
+-- | inductively create a Table out of a list of types
+class HasTable (ts :: [(Symbol, Type)]) where
+  getTable :: Proxy ts -> Table ts
+
+instance HasTable '[] where
+  getTable _ = Nil
+
+instance HasTable ts =>  HasTable ( '(s, t) ': ts) where
+  getTable _ = col :. getTable (Proxy @ts)
+    where
+      col :: Column '(s, t)
+      col = Column
+
 
 -- | add to 2 tables
 addTables :: Table ts -> Table xs -> Table (ts ++ xs)
@@ -43,19 +59,17 @@ getter _  _ = Column
 lens :: Field a -> Lens (Table ts) (Column (ColumnType ts a))
 lens field f s =  s  <$ f (getter field s) -- | TODO: change to shorter version
 
-infixr 4 ^.
+infixr 7 ^.
 
 (^.) :: Table ts -> Field a -> Column (ColumnType ts a)
 _ ^.  _ = Column
 
-from_ :: (Table ts -> a) -> Table ts -> a
-from_  f = f
+-- from_ :: (Table ts -> a) -> Table ts -> a
+-- from_  f = f
 
 
+-- select :: a -> b
+-- select = undefined
 
-select :: a -> b
-select = undefined
-
-ex :: (Table ts -> a) -> a
-ex = select $ from_ $ \ _x -> undefined
-
+-- ex :: (Table ts -> a) -> a
+-- ex = select $ from_ $ \ _x -> undefined

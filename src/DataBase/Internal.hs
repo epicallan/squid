@@ -4,60 +4,29 @@
 {-# LANGUAGE UndecidableSuperClasses #-}
 module DataBase.Internal where
 
--- import Data.Kind
--- import DataBase.Corec
+import Data.Proxy
 import DataBase.HasEntity
 import DataBase.HasSqlValue
+import DataBase.Sql
 import DataBase.Table
-import GHC.Generics
--- import Control.Monad.Reader
--- import Data.Proxy
-import DataBase.Table
+import GHC.Generics hiding (from)
 import GHC.TypeLits
 
-type family DataBase :: Symbol
+infixr 4 ==.
 
-type instance DataBase = "MyDB"
-
--- | for each data type used as a Model we obtain a type level list
--- containing its fields and related type. See HasEntity class
-
-data RelationOps = QEq | QGT | QLT
-
-data Relation where
-  MkRelation
-    :: forall a . HasSqlValue a
-    => RelationOps -> FieldName -> a -> Relation
-
-data Sql a =
-    Select a
-  | Insert a
-  | Where Relation a
-
--- -----------------Example-----------------------***
-
-data User = User
-  { name :: String
-  , age  :: Int
-  , sex  :: String
-  } deriving (Show, Eq, Generic, HasEntity)
-
--- Testing projection into some user table
-
-userTable :: Table (EntityFields User)
-userTable = undefined
+(==.)
+  :: forall field a. (HasSqlValue a, KnownSymbol field)
+  => Column '( field, a) -> a -> Relation
+(==.) _ x = MkRelation QEq fieldName x
+  where
+    fieldName = symbolVal (Proxy @field)
 
 
+-----------------Example-----------------------***
 {-
- -- we want to person to represent something similar to lenses
- -- ^. is like an accessor operator on a lens
- --
- field @"name" ^. person =. "Allan"
 
 select $ from
-       $ \ person -> do -- person is not exactly the generic original data type
-            -- it can be a generically derived associated data type
-            -- For our case its going to be an Hlist (Table ts)
+       $ \ person -> do -- person is a table i.e Hlist (Table ts)
 
             -- we can project values from person
             where_ (person ^. field "name" ==. "Allan") -- same monad
@@ -71,21 +40,25 @@ run in the DB monad.
 -- we can use free Monad for the Query and then have an interpreter to get us the result
 -}
 
--- | projections into some type like person as in the select example above
--- gives us a corec value at which we can obtain a field symbol and its related type.
--- (^.) :: forall f fs sing . (ElemOf fs f) => Table fs -> sing (IsTableField f fs) -> Corec fs
--- (^.) _ _ = inject (Proxy @f)
+data User = User
+  { name :: String
+  , age  :: Int
+  , sex  :: String
+  } deriving (Show, Eq, Generic, HasEntity)
 
+-- Testing projection into some user table
+userTable :: Table (TableFields User)
+userTable = table (Proxy @User)
 
+nameEx :: Column '( "name",  String )
+nameEx = userTable ^. Field @"name"
 
--- (==.)
---   :: forall a s ts. (HasSqlValue a, KnownSymbol s)
---   => Corec ( '(s, a) ': ts)
---   -> a
---   -> Relation
--- (==.) corec x = case corec of
---   Stop Column -> MkRelation QEq fieldName x
---   Skip _          -> error "GHC error shouldn't happen"
---   where
---     fieldName :: String
---     fieldName = symbolVal (Proxy @s)
+equalityExample :: Table (TableFields User) -> Relation
+equalityExample x = x ^. Field @"name" ==. "Allan"
+
+exampleQuery :: Sql User ()
+exampleQuery =
+  select $ from $ \ p -> where_ ( p ^. Field @"name" ==. "Allan")
+
+runExample :: SqlStatement
+runExample = runPure exampleQuery

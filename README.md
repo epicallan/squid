@@ -96,7 +96,7 @@ getPerson = do
   getPerson = do
     select $
       from $ \p -> do
-      where_ (p ^. field @"personAge" >=. just (val 18))
+      where_ (p ^. Field @"personAge" >=. just (val 18))
       return p
 
   -- | You can as well use overloaded labels to access values

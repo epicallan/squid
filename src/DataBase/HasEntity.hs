@@ -10,23 +10,13 @@ import DataBase.TypeLevel
 import GHC.Generics
 import GHC.TypeLits
 
--- | When we say some entity value a is unique
--- it means we can be able to make some SQL query where
--- we know the returned value will be a list containing one value
--- given it exists
-
 class
   ( Generic a
-  , GHasEntity (Rep a)
-  , UniqueConstraint (UniqueKeys a) (EntityFields a)
-  , ForeignKeyConstraint (ForeignKeys a) (EntityFields a)
+  , UniqueConstraint (UniqueKeys a) (TableFields a)
+  , ForeignKeyConstraint (ForeignKeys a) (TableFields a)
   ) => HasEntity a where
-  type EntityFields a ::  [ (Symbol, Type) ]
-  -- ^ user can provide own type essentially own database interpretation
-  type EntityFields a = PrimaryKey a ': GEntityFields (Rep a)
-
-  type TableName a :: Symbol
-  type TableName a =  HasTableName (Rep a)
+  type TableFields a :: [(Symbol, Type)]
+  type TableFields a = PrimaryKey a ': GTableFields '[] (Rep a)
 
   type PrimaryKey a :: (Symbol, Type)
   type PrimaryKey a = '("id", Int)
@@ -37,67 +27,32 @@ class
   type ForeignKeys a :: [(Symbol, Type)]
   type ForeignKeys a = '[]
 
-  tableName :: String
-  default tableName :: (KnownSymbol (TableName a)) => String
-  tableName = symbolVal (Proxy @(TableName a))
+  type TableName a :: Symbol
+  type TableName a = HasTableName (Rep a)
 
-  entity :: a -> Table (EntityFields a)
-  -- ^  we want to be able to create Table (EntityFields a) without the
-  -- need of the 'a' argument
-  -- entity :: Table (EntityFields a)
-  -- entity = Table
-  default entity
-    :: ((PrimaryKey a ': GEntityFields (Rep a)) ~ EntityFields a)
-    => a -> Table (EntityFields a)
-  entity x = primaryKeyColumn :. gentity (from x)
-    where
-      primaryKeyColumn :: Column (PrimaryKey a)
-      primaryKeyColumn = Column
+  table :: Proxy a -> Table (TableFields a)
 
-class GHasEntity rep where
-  type GEntityFields rep :: [ (Symbol, Type) ]
+  getTableName :: Proxy a -> String
+  default getTableName :: KnownSymbol (TableName a) => Proxy a -> String
+  getTableName _ = symbolVal (Proxy @(TableName a))
 
-  gentity :: rep a -> Table (GEntityFields rep)
+  default table
+    :: HasTable (TableFields a)
+    => Proxy a -> Table (TableFields a)
+  table _ = getTable (Proxy @(TableFields a))
 
-instance GHasEntity U1 where
-  type GEntityFields U1 =  TypeError ('Text "Unit types are not supported")
-  gentity _ = error "Provided unsupported table data type"
 
-instance GHasEntity V1 where
-  type GEntityFields V1 = TypeError ('Text "Void types are not supported")
+type family GTableFields (ts :: [(Symbol, Type)]) (rep :: Type -> Type) :: [(Symbol, Type)] where
+  GTableFields ts (S1 ('MetaSel ('Just name) _b _c _d ) (K1 _i a) ) = '( name, a ) ': ts
 
-  gentity _ = error "Provided unsupported table data"
+  GTableFields ts (a :*: b) = (GTableFields '[] a ++ GTableFields '[] b) ++ ts
 
-instance GHasEntity (S1 ('MetaSel ('Just name) _b _c _d ) (K1 _i a) ) where
-  type GEntityFields (S1 ('MetaSel ('Just name) _b _c _d ) (K1 _i a) ) = '[ '( name, a ) ]
+  GTableFields ts (l :+: r) = TypeError ('Text "Sum types are not supported as table records")
 
-  gentity _  = Column :. Nil
+  GTableFields ts (C1 _ a) = GTableFields ts a
 
-instance (GHasEntity a, GHasEntity b) => GHasEntity (a :*: b) where
-  type GEntityFields (a :*: b) = GEntityFields a ++ GEntityFields b
+  GTableFields ts (D1 _ a) = GTableFields ts a
 
-  gentity (a :*: b) =  x `addTables` y
-    where
-      x :: Table (GEntityFields a)
-      x = gentity a
-
-      y :: Table (GEntityFields b)
-      y = gentity b
-
-instance GHasEntity (a :+: b) where
-  type GEntityFields (a :+: b) = TypeError ('Text "Sum types are not supported as table records")
-
-  gentity _ = error "Sum types are not supported as table records"
-
-instance (GHasEntity a) => GHasEntity (C1 _y a) where
-  type GEntityFields (C1 _y a) = GEntityFields a
-
-  gentity (M1 a) = gentity a
-
-instance (GHasEntity a) => GHasEntity (D1 _y a) where
-  type GEntityFields (D1 _y a) = GEntityFields a
-
-  gentity (M1 a) = gentity a
 
 -- | Make sure provided unique keys are with in the table
 type family UniqueConstraint (ts :: [Symbol]) (table :: [(Symbol, Type)]) :: Constraint where

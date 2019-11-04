@@ -2,7 +2,9 @@
 
 [![Hackage](https://img.shields.io/hackage/v/squid.svg?logo=haskell)](https://hackage.haskell.org/package/squid)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Build status](https://github.com/epicallan/squid/workflows/setup-haskell/badge.svg)
 [![Build status](https://img.shields.io/travis/epicallan/squid.svg?logo=travis)](https://travis-ci.org/epicallan/squid)
+
 
 ## Intro
 

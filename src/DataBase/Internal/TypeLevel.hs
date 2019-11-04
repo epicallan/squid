@@ -1,4 +1,4 @@
-module DataBase.TypeLevel where
+module DataBase.Internal.TypeLevel where
 
 import Data.Kind
 import GHC.Generics

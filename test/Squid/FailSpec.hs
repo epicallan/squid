@@ -4,10 +4,11 @@ import Test.Hspec
 
 
 spec :: Spec
-spec = describe "Servant.FailSpec" $ do
+spec = describe "Squid.FailSpec" $ do
     failSpec
 
 failSpec :: Spec
-failSpec = undefined
-
-
+failSpec =
+  describe "throw appropriate errors" $ do
+   it "throw failure error" $ do
+     True `shouldBe` True

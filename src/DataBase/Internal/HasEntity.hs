@@ -1,14 +1,15 @@
 {-# LANGUAGE AllowAmbiguousTypes     #-}
 {-# LANGUAGE DefaultSignatures       #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
-module DataBase.HasEntity where
+module DataBase.Internal.HasEntity where
 
 import Data.Kind
 import Data.Proxy
-import DataBase.Table
-import DataBase.TypeLevel
 import GHC.Generics
 import GHC.TypeLits
+
+import DataBase.Internal.Table
+import DataBase.Internal.TypeLevel
 
 class
   ( Generic a
@@ -16,10 +17,13 @@ class
   , ForeignKeyConstraint (ForeignKeys a) (TableFields a)
   ) => HasEntity a where
   type TableFields a :: [(Symbol, Type)]
-  type TableFields a = PrimaryKey a ': GTableFields '[] (Rep a)
+  type TableFields a = PrimaryKeyField a ': GTableFields '[] (Rep a)
 
-  type PrimaryKey a :: (Symbol, Type)
-  type PrimaryKey a = '("id", Int)
+  type PrimaryKey a :: Type
+  type PrimaryKey a = Int
+
+  type PrimaryKeyField a :: (Symbol, Type)
+  type PrimaryKeyField a = '("id", PrimaryKey a)
 
   type UniqueKeys a :: [Symbol]
   type UniqueKeys a = '[]

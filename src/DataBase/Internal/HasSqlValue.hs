@@ -1,4 +1,4 @@
-module DataBase.HasSqlValue where
+module DataBase.Internal.HasSqlValue where
 
 import Data.Kind
 

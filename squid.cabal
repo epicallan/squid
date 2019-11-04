@@ -25,6 +25,8 @@ source-repository head
 library
   exposed-modules:
       DataBase.Squid
+      DataBase.Internal
+      DataBase.Example
   default-extensions: LambdaCase DeriveGeneric FlexibleInstances FlexibleContexts ScopedTypeVariables TypeApplications TypeOperators MultiParamTypeClasses RecordWildCards TypeApplications TypeFamilies OverloadedStrings GADTs GeneralizedNewtypeDeriving FunctionalDependencies ConstraintKinds RankNTypes PolyKinds DataKinds KindSignatures ViewPatterns UndecidableInstances StrictData
   build-depends:
     base                 >= 4.10.1 && < 5,
@@ -54,7 +56,6 @@ library
 test-suite readme
   build-depends:
       base  >= 4.10.1 && < 5
-    , aeson >= 1.4.5 && < 1.5
     , squid
   main-is:             README.lhs
   type:                exitcode-stdio-1.0

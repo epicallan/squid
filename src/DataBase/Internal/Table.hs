@@ -1,9 +1,11 @@
-module DataBase.Table where
+{-# LANGUAGE TypeApplications #-}
+module DataBase.Internal.Table where
 
 import Data.Kind (Type)
 import Data.Proxy
-import DataBase.TypeLevel
 import GHC.TypeLits
+
+import DataBase.Internal.TypeLevel
 
 data Column (a :: (Symbol, Type)) = Column
 
@@ -63,13 +65,3 @@ infixr 7 ^.
 
 (^.) :: Table ts -> Field a -> Column (ColumnType ts a)
 _ ^.  _ = Column
-
--- from_ :: (Table ts -> a) -> Table ts -> a
--- from_  f = f
-
-
--- select :: a -> b
--- select = undefined
-
--- ex :: (Table ts -> a) -> a
--- ex = select $ from_ $ \ _x -> undefined

@@ -1,14 +1,9 @@
 module DataBase.Squid
-  ( module DataBase.TypeLevel
-  , module DataBase.Corec
-  , module DataBase.HasSqlValue
-  , module DataBase.HasEntity
+  ( module DataBase.Squid.Internal.SqlPersist
+  , module DataBase.Squid.Internal.Sql
   , module DataBase.Internal
   ) where
 
-
-import DataBase.Corec
-import DataBase.HasEntity
-import DataBase.HasSqlValue
-import DataBase.Internal
-import DataBase.TypeLevel
+import DataBase.Squid.Internal.Sql
+import DataBase.Squid.Internal.SqlPersist
+import DataBase.Internal -- TODO: selectively pick whats required

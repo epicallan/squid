@@ -60,44 +60,56 @@ getPerson = do
 
 ### Squid
 
-```haskell ignore
+```haskell
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds  #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE TypeFamilies  #-}
 
-  type instance PersistDB = ["Person", "BlogPost"] -- useful for migration / optional
+import Control.Monad.IO.Class
+import GHC.Generics hiding (from)
 
-  -- | Primary keys are automatically created just like in Persistent.
-  -- Its still possible to set your own primary key.
-  data Person = Person
-    { personName :: String
-    , personAge :: Maybe Int
-    } deriving (Eq, Show, Generic, HasEntity)
+import DataBase.Squid
 
-  data BlogPost = BlogPost
-    { blogPostTitle :: String
-    , blogPostAuthor :: Int
-    } deriving (Eq, Show, Generic)
-  
-  -- | writing instance explicitely to represent foreign key constraint
-  instance HasEntity BlogPost where
-    type ForeignKeys = '[ '("blogPostAuthor", Person) ]
+data User = User
+  { name :: String
+  , age  :: Int
+  , sex  :: String
+  } deriving (Show, Eq, Generic, HasEntity)
 
-  -- | SELECT *
-  -- FROM Person
-  -- WHERE Person.age >= 18
-  getPerson :: SqlPersist m Person
-  getPerson = do
-    select $
-      from $ \p -> do
-      where_ (p ^. Field @"personAge" >=. just (val 18))
-      return p
+data BlogPost = BlogPost
+  { title  :: String
+  , author :: Int
+  } deriving (Eq, Show, Generic)
 
-  -- | You can as well use overloadedlabels to access values
-  getPerson' :: SqlPersist m Person
-  getPerson' = do
-    select $
-      from $ \p -> do
-      where_ (p ^. #personAge >=. just (val 18))
-      return p
+-- | writing instance explicitely to represent foreign key constraint
+instance HasEntity BlogPost where
+  type ForeignKeys BlogPost = '[ '("author", User) ]
 
+-- | Examples
+
+--- Initial style
+getBlogPosts :: MonadIO m => SqlMock m [BlogPost]
+getBlogPosts = do
+  blogPosts <- select $ from $ \ p -> where_ ( p ^. Field @"title" ==. "Book")
+  return $ entityVal <$> blogPosts
+
+-- | final style
+getPeople :: (MonadIO m, MonadSql m User) => m ()
+getPeople =  do
+  people <- select
+               $ from
+               $ \ person -> where_ ( person ^. Field @"name" ==. "Allan")
+  liftIO $ mapM_ (putStrLn . name . entityVal) people
+
+main' :: IO ()
+main' = runMockDbIO defaultMockConfig $ do
+  blogPosts <- getBlogPosts
+  liftIO $ print blogPosts
+  getPeople
 ```
 
 ## Documentation

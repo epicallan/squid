@@ -4,8 +4,11 @@ import Test.Hspec
 
 
 spec :: Spec
-spec = describe "Servant.SuccessSpec" $ do
-    failSpec
+spec = describe "Squid.SuccessSpec" $ do
+    successSpec
 
 successSpec :: Spec
-successSpec = undefined
+successSpec =
+  describe "runs properly" $ do
+   it "returns expected result" $ do
+     True `shouldBe` True

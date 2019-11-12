@@ -94,7 +94,7 @@ instance HasEntity BlogPost where
 --- Initial style
 getBlogPosts :: MonadIO m => SqlMock m [BlogPost]
 getBlogPosts = do
-  blogPosts <- select $ from $ \ p -> where_ ( p ^. Field @"title" ==. "Book")
+  blogPosts <- select $ from $ \ p -> where_ ( p ^. #title ==. "Book")
   return $ entityVal <$> blogPosts
 
 -- | final style
@@ -102,7 +102,7 @@ getPeople :: (MonadIO m, MonadSql m User) => m ()
 getPeople =  do
   people <- select
                $ from
-               $ \ person -> where_ ( person ^. Field @"name" ==. "Allan")
+               $ \ person -> where_ ( person ^. #name ==. "Allan")
   liftIO $ mapM_ (putStrLn . name . entityVal) people
 
 main' :: IO ()

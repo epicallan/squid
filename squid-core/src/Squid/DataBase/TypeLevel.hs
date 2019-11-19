@@ -1,4 +1,4 @@
-module DataBase.Internal.TypeLevel where
+module Squid.DataBase.TypeLevel where
 
 import Data.Kind
 import GHC.Generics

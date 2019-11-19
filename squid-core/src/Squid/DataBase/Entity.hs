@@ -1,15 +1,14 @@
 {-# LANGUAGE StandaloneDeriving #-}
-module DataBase.Internal.PersistEntity where
+module Squid.DataBase.Entity where
 
-import DataBase.Internal.HasEntity
 import GHC.Generics
+import Squid.DataBase.HasEntity
 
 data Entity a = Entity
-  { entityVal :: a
-  , entityId  :: PrimaryKey a
+  { entityId  :: PrimaryKey a
+  , entityVal :: a
   }
 
--- | maybe derive Typeable
 deriving instance (Show a, Show (PrimaryKey a)) => Show (Entity a)
 
 deriving instance (Eq a, Eq (PrimaryKey a)) => Eq (Entity a)

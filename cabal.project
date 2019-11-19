@@ -1,0 +1,4 @@
+packages:
+  ./
+  squid-postgres/
+  squid-core/

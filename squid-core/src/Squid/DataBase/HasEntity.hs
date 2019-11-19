@@ -1,15 +1,15 @@
 {-# LANGUAGE AllowAmbiguousTypes     #-}
 {-# LANGUAGE DefaultSignatures       #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
-module DataBase.Internal.HasEntity where
+module Squid.DataBase.HasEntity where
 
 import Data.Kind
 import Data.Proxy
 import GHC.Generics
 import GHC.TypeLits
 
-import DataBase.Internal.Table
-import DataBase.Internal.TypeLevel
+import Squid.DataBase.Table
+import Squid.DataBase.TypeLevel
 
 class
   ( Generic a

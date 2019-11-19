@@ -12,6 +12,8 @@ use of Template Haskell.
 Squid makes use of Generic programming and type level programming to provide a similar sql query
 API to that of Persistent-Esqueleto. In a way Squid is very similar to Selda as far as general approach is concerned.
 
+Squid works with GHC 8.6 and above.
+
 ## Motivation
 
 Squid is built for those who love Persistent-Esqueleto but wish they had the following:
@@ -47,15 +49,6 @@ getPersons = do
               from $ \person -> do
               return person
   liftIO $ mapM_ (putStrLn . personName . entityVal) people
-
-getPerson :: SqlPersist m Person
-getPerson = do
-  select $
-    from $ \p -> do
-    where_ (p ^. PersonAge >=. just (val 18))
-    return p
-
-
 ```
 
 ### Squid
@@ -72,44 +65,27 @@ getPerson = do
 import Control.Monad.IO.Class
 import GHC.Generics hiding (from)
 
-import DataBase.Squid
+import Squid.Postgres
 
-data User = User
+data Person = Person
   { name :: String
   , age  :: Int
   , sex  :: String
-  } deriving (Show, Eq, Generic, HasEntity)
+  } deriving (Show, Eq, Generic, FromRow, HasEntity)
 
-data BlogPost = BlogPost
-  { title  :: String
-  , author :: Int
-  } deriving (Eq, Show, Generic)
-
--- | writing instance explicitely to represent foreign key constraint
-instance HasEntity BlogPost where
-  type ForeignKeys BlogPost = '[ '("author", User) ]
-
--- | Examples
-
---- Initial style
-getBlogPosts :: MonadIO m => SqlMock m [BlogPost]
-getBlogPosts = do
-  blogPosts <- select $ from $ \ p -> where_ ( p ^. Field @"title" ==. "Book")
-  return $ entityVal <$> blogPosts
-
--- | final style
-getPeople :: (MonadIO m, MonadSql m User) => m ()
-getPeople =  do
+getPersons :: SqlPersist m ()
+getPersons =  do
   people <- select
                $ from
-               $ \ person -> where_ ( person ^. Field @"name" ==. "Allan")
+               $ \ person -> do
+                      where_ (#sex person ==. "male" )
+                      where_ (#age person >. 25 )
   liftIO $ mapM_ (putStrLn . name . entityVal) people
 
 main' :: IO ()
-main' = runMockDbIO defaultMockConfig $ do
-  blogPosts <- getBlogPosts
-  liftIO $ print blogPosts
-  getPeople
+main' = do
+  config <- createConfig
+  runDb config getPersons
 ```
 
 ## Documentation

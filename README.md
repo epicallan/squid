@@ -7,10 +7,20 @@
 ## Intro
 
 Squid is a type safe EDSL for SQL thats aims to replicate the Persistent-Esqueleto API without the
-use of template haskell.
+use of Template Haskell.
 
-Squid makes use of Generic programming and type level programming to provide a similar user facing
-API to that of Persistent - Esqueleto.
+Squid makes use of Generic programming and type level programming to provide a similar sql query
+API to that of Persistent-Esqueleto. In a way Squid is very similar to Selda as far as general approach is concerned.
+
+Squid works with GHC 8.6 and above.
+
+## Motivation
+
+Squid is built for those who love Persistent-Esqueleto but wish they had the following:
+
+- A non TH way of specifying table entities.
+- A namespace that's not littered with new compile generated Template Haskell generated types.
+- A minimal and flexible API
 
 ## Comparison between Persistent-Esqueleto and Squid
 
@@ -39,62 +49,44 @@ getPersons = do
               from $ \person -> do
               return person
   liftIO $ mapM_ (putStrLn . personName . entityVal) people
-
-getPerson :: SqlPersist m Person
-getPerson = do
-  select $
-    from $ \p -> do
-    where_ (p ^. PersonAge >=. just (val 18))
-    return p
-
 ```
 
 ### Squid
 
-```haskell ignore
+```haskell
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds  #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE TypeFamilies  #-}
 
-  type instance PersistDB = "ExampleDb"
+import Control.Monad.IO.Class
+import GHC.Generics hiding (from)
 
-  -- | Primary keys are automatically created just like in Persistent.
-  data PersonEntity f = PersonEntity
-    { personName :: f String
-    , personAge :: f (Maybe Int)
-    } deriving (Eq, Show, Generic, PersistEntity "ExampleDb")
+import Squid.Postgres
 
-  type Person = PersonEntity Identity
+data Person = Person
+  { name :: String
+  , age  :: Int
+  , sex  :: String
+  } deriving (Show, Eq, Generic, FromRow, HasEntity)
 
-  data BlogPostEntity f = BlogPostEntity
-    { blogPostTitle :: f (Unique String) -- unique is a type family
-    , blogPostauthorId :: f (EntityId Person) -- type family -- foreign Key constraint
-    } deriving (Eq, Show, Generic, PersistEntity "ExampleDb")
+getPersons :: SqlPersist m ()
+getPersons =  do
+  people <- select
+               $ from
+               $ \ person -> do
+                      where_ (#sex person ==. "male" )
+                      where_ (#age person >. 25 )
+  liftIO $ mapM_ (putStrLn . name . entityVal) people
 
-  type BlogPost = BlogPostEntity Identity
-
-  data FollowEntity f = FollowEntity
-    { followFollower :: f (EntityId Person)
-    , followFollowed :: f (EntityId Person)
-    } (Eq, Show, Generic, PersistEntity "ExampleDb")
-
-  type Follow = FollowEntity Identity
-
-  -- | Generates SELECT * FROM Person
-  getPersons :: SqlPersist m ()
-  getPersons = do
-    people <- select $
-                from $ \person -> do
-                return person
-    liftIO $ mapM_ (putStrLn . personName . entityVal) people
-
--- | SELECT *
--- FROM Person
--- WHERE Person.age >= 18
-getPerson :: SqlPersist m Person
-getPerson = do
-  select $
-    from $ \p -> do
-    where_ (p ^. field "personAge" >=. just (val 18))
-    return p
-
+main' :: IO ()
+main' = do
+  config <- createConfig
+  runDb config getPersons
 ```
 
 ## Documentation

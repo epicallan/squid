@@ -7,12 +7,10 @@ import Squid.Client.RunClient
 import Squid.DataBase
 import Data.Kind
 
--- | This type-class represents default implementations
+-- | The HasQuerying  represents default implementations
 -- of querying capabilities by an SQL client under different
 -- interpretations of SQL operations such as simple select & implicit joins)
 --
-
-
 -- | 'entity' represents a table or tables under an sql select operation
 --  'a' represents interpretation of the table as an operation
 --
@@ -43,12 +41,6 @@ instance {-# Overlapping #-} (HasTable ts, HasTable xs)
   selectCmd f = do
     select_
     f (mkTable @ts, mkTable @xs)
-
--- from
---   :: (a -> Sql entity ())
---   -> a
---   -> Sql entity ()
--- from f next = from_ >> f next
 
 select
   :: forall a m . (RunClient a 'Query m, HasQuerying a (OperationEntities a))

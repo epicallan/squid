@@ -23,8 +23,6 @@ deriving instance (Ord a, Ord (PrimaryKey a)) => Ord (Entity a)
 
 deriving instance Generic (Entity a)
 
--- | TODO: we may have to increase the number of tuple instances for FromRow class
--- maybe with template haskell or manually.
 type family GetDbRowEntities (a :: Type) :: Type where
   GetDbRowEntities (a, b) = (Entity a, Entity b)
   GetDbRowEntities a = Entity a

@@ -36,8 +36,8 @@ getUsers = do
 
   liftIO $ mapM_ (putStrLn . name . entityVal) people
 
-getUsersAndBlogs :: SqlPersist m ()
-getUsersAndBlogs = do
+getUserBlogs :: SqlPersist m ()
+getUserBlogs = do
   usersAndBlogs <- select @(User, BlogPost)
               $ from
               $ \ (person, blog) -> do
@@ -61,4 +61,4 @@ main = do
   runDb config $ do
     migrateTables
     getUsers
-    getUsersAndBlogs
+    getUserBlogs

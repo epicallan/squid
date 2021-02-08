@@ -80,15 +80,15 @@ getPersons =  do
                      where_ (#age person  >=. Just 20 )
   liftIO $ mapM_ (putStrLn . name . entityVal) people
 
-createConfig :: IO SqlConfig
-createConfig = do
-  conn  <- connectPostgreSQL "host=localhost port=5432 dbname=squid user=allan"
-  return $ defaultConfig { sqlConnection = Just conn }
-
 main' :: IO ()
 main' = do
   config <- createConfig
   runDb config getPersons
+  where
+    createConfig :: IO SqlConfig
+    createConfig = do
+      conn  <- connectPostgreSQL "host=localhost port=5432 dbname=squid user=allan"
+      return $ defaultConfig { sqlConnection = Just conn }
 ```
 
 ## Documentation

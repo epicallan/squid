@@ -1,13 +1,20 @@
 -- | writes out literal textual sql thats eventually
--- run in the DB
+-- runs in the DB
 --
 module Squid.Client.SqlWriter where
 
+import Control.Exception (Exception(..))
 import Squid.Prelude
 
 import Squid.DataBase
+
 import qualified Data.Text as Text
 import qualified Data.List.NonEmpty as NE
+
+
+newtype SqlWriterError = SqlWriterError Text
+  deriving stock (Show, Eq)
+  deriving anyclass (Exception)
 
 sqlWriter
   :: NonEmpty TableDefinition
@@ -23,7 +30,7 @@ sqlWriter tableDefinitions stmt
       (getQueryParams tableDefinitions stmt)
 
 -- | Note for select statements we are doing simple relations
--- whose values are carried within RelationAction
+-- whose values are carried within the RelationAction data type
 --
 getParamValues :: SqlStatement -> [FieldValue]
 getParamValues SqlStatement {..} = case sqlQueryType of
@@ -66,7 +73,7 @@ selectQueryParams SqlStatement {..} = TypedQueryParams $ " WHERE " <> selectActi
 
     extractParams :: RelationAction -> Text
     extractParams (RelationAction op fieldName _fieldValue)
-      = fieldName <> " " <> relationOpSymbol  op <> " ? "
+      = fieldName <> " " <> fromRelationOp  op <> " ? "
 
 getSubQuery
   :: NonEmpty TableDefinition

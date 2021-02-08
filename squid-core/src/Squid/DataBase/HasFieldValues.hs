@@ -26,9 +26,11 @@ data FieldValue where
 -- its set to auto-increment during migration. In cases where its not
 -- and a user provides their own key, then we still have to do nothing
 -- it will be submitted with the record.
--- TODO: Used for SQL inserts, maybe should be renamed and moved to different module
--- The purpose of this class is to wrap column/field values into an GADT with
--- HasSqlValue context
+--
+-- This class is currently used for SQL insert values.
+-- it wraps a column/field values of a provided Record into
+-- an GADT with HasSqlValue context
+--
 class HasFieldValues a where
   fieldValues :: a -> [FieldValue]
   default fieldValues :: (Generic a, GHasFieldValues (Rep a)) => a -> [FieldValue]
@@ -47,6 +49,7 @@ instance (GHasFieldValues a) => GHasFieldValues (M1 _x _y a) where
   gFieldValues (M1 a) = gFieldValues a
 
 -- | inspired by ToField from postgresql-simple
+--
 class HasSqlValue a where
   toSqlValue :: a -> SqlValue
 
@@ -60,6 +63,6 @@ instance HasSqlValue Int where
   toSqlValue  = Plain . intDec
 
 instance HasSqlValue a => HasSqlValue (Maybe a) where
-  toSqlValue  = \case
+  toSqlValue = \case
     Just a -> toSqlValue a
     _      -> Null

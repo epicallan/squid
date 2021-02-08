@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Squid.DataBase.SqlCommands where
 
-import Control.Monad.Free
+import Control.Monad.Free ( liftF, Free )
 
-import Squid.DataBase.HasFieldValues
-import Squid.DataBase.SqlStatement
+import Squid.DataBase.HasFieldValues ( FieldValue )
+import Squid.DataBase.SqlStatement ( RelationAction, RawStatement )
 
 data SqlF entity next =
     Select next

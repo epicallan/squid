@@ -11,7 +11,7 @@ import Squid.DataBase
 import qualified Data.List.NonEmpty as NE
 
 -- | consider not using StateT,
--- by maybe returning the result into next
+-- by maybe returning the result into next in some cases
 type EvalSql = StateT SqlStatement Identity
 
 evalSql :: forall a r . Sql a r -> EvalSql r

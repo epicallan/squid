@@ -14,7 +14,6 @@ migrateAll
   => m (SqlResults ts 'ExecuteVoid)
 migrateAll = migrateAll_ @ts $ migrationSql @ts
 
-
 migrationSql :: forall ts . HasMigration ts => RawStatement
 migrationSql = foldMap createSql (migration @ts)
 

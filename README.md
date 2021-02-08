@@ -12,7 +12,7 @@ use of Template Haskell.
 Squid makes use of Generic programming and type level programming to provide a similar sql query
 API to that of Persistent-Esqueleto. In a way Squid is very similar to Selda as far as general approach is concerned.
 
-Squid works with GHC 8.6 and above.
+Squid works with GHC 8.8 and above.
 
 ## Motivation
 
@@ -47,21 +47,20 @@ getPersons :: SqlPersist m ()
 getPersons = do
   people <- select $
               from $ \person -> do
-              return person
+                where_ (p ^. PersonAge >=. just (val 18))
+                return person
   liftIO $ mapM_ (putStrLn . personName . entityVal) people
 ```
 
 ### Squid
 
 ```haskell
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DataKinds  #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE TypeFamilies  #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedLabels  #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications  #-}
+module Main where
 
 import Control.Monad.IO.Class
 import GHC.Generics hiding (from)
@@ -70,18 +69,21 @@ import Squid.Postgres
 
 data Person = Person
   { name :: String
-  , age  :: Int
-  , sex  :: String
-  } deriving (Show, Eq, Generic, FromRow, HasEntity)
+  , age  :: Maybe Int
+  } deriving (Show, Generic, HasEntity, FromRow)
 
 getPersons :: SqlPersist m ()
 getPersons =  do
-  people <- select
+  people <- select @Person
                $ from
-               $ \ person -> do
-                      where_ (#sex person ==. "male" )
-                      where_ (#age person >. 25 )
+               $ \person -> do
+                     where_ (#age person  >=. Just 20 )
   liftIO $ mapM_ (putStrLn . name . entityVal) people
+
+createConfig :: IO SqlConfig
+createConfig = do
+  conn  <- connectPostgreSQL "host=localhost port=5432 dbname=squid user=allan"
+  return $ defaultConfig { sqlConnection = Just conn }
 
 main' :: IO ()
 main' = do

@@ -1,31 +1,29 @@
-{-# LANGUAGE TypeApplications #-}
 module Squid.Client.Operators where
 
-import Data.Proxy
-import Data.String (fromString)
-import GHC.TypeLits
+import Squid.Prelude
 
 import Squid.DataBase
 
+type HasOperators field a = (KnownSymbol field, HasSqlValue a)
+
 createRelation
-  :: forall field a. (KnownSymbol field, HasSqlField a)
-  => RelationOp -> Column '( field, a) -> a -> RelationAction
+  :: forall field a . HasOperators field a
+  => RelationOp
+  -> TableField '(field, a)
+  -> a
+  -> RelationAction
 createRelation op  _ x = RelationAction op fieldName (FieldValue x)
   where
-    fieldName = fromString $ symbolVal (Proxy @field)
+    fieldName = symbolText @field
 
-(==.)
-  :: forall field a. (KnownSymbol field, HasSqlField a)
-  => Column '( field, a) -> a -> RelationAction
+(==.) :: HasOperators field a
+      => TableField '(field, a) -> a -> RelationAction
 (==.) = createRelation QEq
 
-(>.)
-  :: forall field a. (KnownSymbol field, HasSqlField a)
-  => Column '( field, a) -> a -> RelationAction
+(>.) :: HasOperators field a
+     => TableField '(field, a) -> a -> RelationAction
 (>.) = createRelation QGT
 
-
-(<.)
-  :: forall field a. (KnownSymbol field, HasSqlField a)
-  => Column '( field, a) -> a -> RelationAction
+(<.) :: HasOperators field a
+     => TableField '(field, a) -> a -> RelationAction
 (<.) = createRelation QLT

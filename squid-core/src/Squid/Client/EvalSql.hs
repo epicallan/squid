@@ -10,8 +10,6 @@ import Squid.DataBase
 
 import qualified Data.List.NonEmpty as NE
 
--- | consider not using StateT,
--- by maybe returning the result into next in some cases
 type EvalSql = StateT SqlStatement Identity
 
 evalSql :: forall a r . Sql a r -> EvalSql r
@@ -27,8 +25,8 @@ evalSql (Free (Where relationAction r)) = do
   modify' (\s -> s { sqlWhere = relationAction : sqlWhere s  } )
   evalSql r
 
-evalSql (Free (Insert x r)) = do
-  modify' (\s -> s { sqlQueryType = InsertQuery, sqlInserts = x })
+evalSql (Free (Insert insertValues r)) = do
+  modify' (\s -> s { sqlQueryType = InsertQuery, sqlInserts = insertValues })
   evalSql r
 
 evalSql (Free (Raw x r)) = do

@@ -53,19 +53,19 @@ class
     => Table (TableFields a)
   genTableEntity = mkTable @(TableFields a)
 
-  defaultKeys :: DefaultKeysRec (GetTableDefs (TableDefaults a) (TableFields a))
+  defaultKeys :: DefaultKeysRec (GetTableDefaultKeyTypes (TableDefaults a) (TableFields a))
   default defaultKeys
-     :: (GetTableDefs (TableDefaults a) (TableFields a) ~ '[])
-     => DefaultKeysRec  (GetTableDefs (TableDefaults a) (TableFields a))
+     :: (GetTableDefaultKeyTypes (TableDefaults a) (TableFields a) ~ '[])
+     => DefaultKeysRec  (GetTableDefaultKeyTypes (TableDefaults a) (TableFields a))
   defaultKeys = Nil
 
-  getSqlColumns :: NonEmpty SqlColumn -- TODO: should be a NonEmpty
+  getSqlColumns :: NonEmpty SqlColumn
   default getSqlColumns :: forall uniqueKeys foreignKeys primaryField primaryType defaultKeys
    . ( Generic a
      , HasEntity a
      , uniqueKeys ~ UniqueKeys a
      , foreignKeys ~ GetForeignKeyValues (ForeignKeys a)
-     , defaultKeys ~ GetTableDefs (TableDefaults a) (TableFields a)
+     , defaultKeys ~ GetTableDefaultKeyTypes (TableDefaults a) (TableFields a)
      , '(primaryField, primaryType) ~ PrimaryKeyField a
      , HasSqlType primaryType
      , HasNumericalType primaryType
@@ -129,13 +129,15 @@ type family ForeignKeyConstraints (ts :: TableFieldsKind) (table :: Type) :: Con
 type family HasUniqueForeignParentField (pfield :: Symbol) (parentUniques :: [Symbol]) :: Constraint where
   HasUniqueForeignParentField x ( x ': xs) = ()
   HasUniqueForeignParentField x ( y ': xs) = (HasUniqueForeignParentField x xs)
-  -- TODO: better error msg
   HasUniqueForeignParentField x '[] = TypeError ('Text "Parent Foreign field should be Unique")
 
+-- | Retrieve tableName from data type name
 type family HasTableName (rep :: k -> Type) :: Symbol where
   HasTableName (D1 ('MetaData name _ _ _) _) =  name
   HasTableName _  = TypeError ('Text "GHC error: Wrong provided data type")
 
+-- | Constraint to witness presence of a table field in a list of table fields
+--
 type family IsTableField (field :: Symbol) (ts :: [(Symbol, Type)]) :: Constraint where
    IsTableField x '[] = TypeError ('Text "Provided field Name is not part of the database table record")
    IsTableField x ( '(x, t) ': ts) = ()
@@ -146,8 +148,6 @@ type family GetForeignKeyValues (a :: TableFieldsKind) :: [(Symbol, Symbol, Symb
   GetForeignKeyValues '[] = '[]
 
 -- | Get the corresponding type for each provided default symbol
-type family GetTableDefs (ts :: [Symbol]) (fs :: [(Symbol, Type)]) :: [(Symbol, Type)] where
-  -- TODO: UTCTime or TimeTypes should map to a Textual values
-  -- for which we can have pattern synonyms such as TIME_STAMP
-  GetTableDefs ( s ': ts ) fs = GetField fs s ': GetTableDefs ts fs
-  GetTableDefs '[]  _  = '[]
+type family GetTableDefaultKeyTypes (ts :: [Symbol]) (fs :: [(Symbol, Type)]) :: [(Symbol, Type)] where
+  GetTableDefaultKeyTypes ( s ': ts ) fs = GetField fs s ': GetTableDefaultKeyTypes ts fs
+  GetTableDefaultKeyTypes '[]  _  = '[]

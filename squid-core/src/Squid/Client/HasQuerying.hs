@@ -49,7 +49,7 @@ select
 select f = runClient @a @'Query (selectCmd f)
 
 from
-  :: (OperationEntities a -> Sql a ())
-  -> OperationEntities a
+  :: (b -> Sql a ())
+  -> b
   -> Sql a ()
 from f next = from_ >> f next

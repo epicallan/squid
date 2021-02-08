@@ -3,6 +3,9 @@ module Squid.Client.Operators where
 import Squid.Prelude
 
 import Squid.DataBase
+    ( HasSqlValue, FieldValue(FieldValue), TableField, RelationAction(..)
+    , RelationOp(..)
+    )
 
 type HasOperators field a = (KnownSymbol field, HasSqlValue a)
 

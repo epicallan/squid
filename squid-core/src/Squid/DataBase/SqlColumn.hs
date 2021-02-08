@@ -81,12 +81,12 @@ instance  {-# Overlapping #-} (HasDefaultValue '(s, a)  ts)
 -- | This class enables us to get Sql column values. Its used in
 -- the HasEntity class
 class GHasSqlColumns
-  (column      :: Type -> Type)
+  (columnRep   :: Type -> Type)
   (uniqueKeys  :: [Symbol])
   (foreignKeys :: [(Symbol, Symbol, Symbol)])
   (defaults    :: [(Symbol, Type)]) where
   gSqlColumns
-    :: Proxy column
+    :: Proxy columnRep
     -> Proxy uniqueKeys
     -> Proxy foreignKeys
     -> DefaultKeysRec defaults
@@ -155,16 +155,17 @@ instance (TypeError ('Text "Sum types are not supported as table records"))
 
 instance (GHasSqlColumns a uniqKeys foreignKeys ts, GHasSqlColumns b uniqKeys foreignKeys ts)
   => GHasSqlColumns (a :*: b) uniqKeys foreignKeys ts where
-  gSqlColumns _ puxs pfxs defaultKeysRec =
-    gSqlColumns (Proxy @a) puxs pfxs defaultKeysRec <> gSqlColumns (Proxy @b) puxs pfxs defaultKeysRec
+  gSqlColumns _ proxyUniqKeys proxyFKeys defaultKeysRec
+    = gSqlColumns (Proxy @a) proxyUniqKeys proxyFKeys defaultKeysRec
+    <> gSqlColumns (Proxy @b) proxyUniqKeys proxyFKeys defaultKeysRec
 
 instance (GHasSqlColumns a uniqKeys foreignKeys ts)
   => GHasSqlColumns (C1 _b a) uniqKeys foreignKeys ts where
-  gSqlColumns _ puxs pfxs  defaultKeysRec= gSqlColumns (Proxy @a) puxs pfxs defaultKeysRec
+  gSqlColumns _ proxyUniqKeys proxyFKeys  defaultKeysRec = gSqlColumns (Proxy @a) proxyUniqKeys proxyFKeys defaultKeysRec
 
 instance (GHasSqlColumns a uniqKeys foreignKeys ts)
   => GHasSqlColumns (D1 _b a) uniqKeys foreignKeys ts where
-  gSqlColumns _ puxs pfxs defaultKeysRec = gSqlColumns (Proxy @a) puxs pfxs defaultKeysRec
+  gSqlColumns _ proxyUniqKeys proxyFKeys defaultKeysRec = gSqlColumns (Proxy @a) proxyUniqKeys proxyFKeys defaultKeysRec
 
 type family IsForeignKey (key :: Symbol) (fs :: [(Symbol, Symbol, Symbol)]) :: (Bool, Symbol, Symbol) where
   IsForeignKey key ( '(key, refTable, refCol) ': ts  ) = '( 'True, refCol, refTable)

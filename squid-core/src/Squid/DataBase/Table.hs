@@ -3,7 +3,7 @@ module Squid.DataBase.Table where
 import GHC.OverloadedLabels ( IsLabel(..) )
 
 import Squid.Prelude
-import Squid.DataBase.TypeLevel ( GetField, type (++) )
+import Squid.DataBase.TypeLevel ( GetField )
 
 infixr 7 :.
 
@@ -36,11 +36,6 @@ instance HasTable ts
   =>  HasTable ('(fieldName, fieldType) ': ts) where
   mkTable = TableField @'(fieldName, fieldType) :. mkTable @ts
 
--- | Add two tables
-addTables :: Table ts -> Table xs -> Table (ts ++ xs)
-addTables = \case
-  TNil       -> id
-  ( x :. xs) -> \ys -> x :. addTables xs ys
 
 -- | Access Table fields using Overloaded labels
 instance

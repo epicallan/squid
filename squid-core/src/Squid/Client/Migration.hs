@@ -1,9 +1,11 @@
 module Squid.Client.Migration where
 
-import Data.Kind
+import Data.Kind ( Type )
 
 import Squid.Client.RunClient
+  ( RunClient(..), PersistType(ExecuteVoid) )
 import Squid.DataBase
+    ( RawStatement, HasEntity(..), TableDefinition, raw_)
 
 class HasMigration (ts :: [Type]) where
   migration :: [TableDefinition]

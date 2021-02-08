@@ -18,8 +18,8 @@ newtype RawStatement = RawStatement { unRawStatement :: Text }
 instance Semigroup RawStatement where
   (RawStatement a) <> (RawStatement b) = RawStatement (a <> " ; " <> b)
 
-relationOpSymbol :: RelationOp -> Text
-relationOpSymbol = \case
+fromRelationOp :: RelationOp -> Text
+fromRelationOp = \case
   QEq -> "="
   QGT -> ">"
   QLT -> "<"
@@ -38,14 +38,6 @@ data SqlQueryType =
   | RawQuery
   deriving (Eq)
 
--- TODO: should use a conversion class
---
-sqlQueryTypeText :: SqlQueryType -> Text
-sqlQueryTypeText = \case
-  SelectQuery -> "SELECT"
-  InsertQuery -> "INSERT"
-  RawQuery    -> mempty
-
 data SqlStatement = SqlStatement
   { sqlWhere     :: [RelationAction]
   , sqlInserts   :: [FieldValue]
@@ -55,16 +47,16 @@ data SqlStatement = SqlStatement
   }
 
 newtype TypedSqlStatement = TypedSqlStatement Text
-  deriving (Show, Eq)
+  deriving (Eq)
 
-newtype TypedQueryParams = TypedQueryParams { unTypedQueryAction :: Text }
-  deriving (Show, Eq)
+newtype TypedQueryParams = TypedQueryParams Text
+  deriving (Eq)
   deriving Semigroup via Text
   deriving Monoid via Text
 
 -- TODO: maybe rename
-newtype TypedSubQuery = TypedSubQuery { unTypedSubQuery :: Text }
-  deriving (Show, Eq)
+newtype TypedSubQuery = TypedSubQuery Text
+  deriving (Eq)
   deriving Semigroup via Text
   deriving Monoid via Text
 

@@ -1,5 +1,5 @@
 -- For Sql execution commands such as Insert, delete, update etc
--- currently only insert is implemented
+-- currently only insert is implemented/supported
 --
 module Squid.Client.HasExecution where
 

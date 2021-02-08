@@ -1,23 +1,32 @@
-{-# LANGUAGE AllowAmbiguousTypes     #-}
-{-# LANGUAGE DefaultSignatures       #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 module Squid.DataBase.HasEntity where
 
-import Data.Kind
-import Data.Proxy
 import GHC.Generics
-import GHC.TypeLits
+
+import Squid.Prelude
+
 
 import Squid.DataBase.Table
-import Squid.DataBase.TypeLevel
+import Squid.DataBase.HasNumericalType ( HasNumericalType(..) )
+import Squid.DataBase.TypeLevel ( GetField, type (++) )
+import Squid.DataBase.SqlColumn
+import Squid.DataBase.HasSqlType ( HasSqlType(..) )
+import qualified Data.List.NonEmpty as NE
+
+data TableDefinition = TableDefinition
+  { tableName    :: SqlTableName
+  , tableColumns :: NonEmpty SqlColumn
+  }
 
 class
   ( Generic a
-  , UniqueConstraint (UniqueKeys a) (TableFields a)
-  , ForeignKeyConstraint (ForeignKeys a) (TableFields a)
+  , UniqueConstraints (UniqueKeys a) a
+  , ForeignKeyConstraints (ForeignKeys a) a
   ) => HasEntity a where
-  type TableFields a :: [(Symbol, Type)]
-  type TableFields a = PrimaryKeyField a ': GTableFields '[] (Rep a)
+
+  type TableFields a :: TableFieldsKind
+  type TableFields a = PrimaryKeyField a ': GetTableFieldFromEntity '[] (Rep a)
 
   type PrimaryKey a :: Type
   type PrimaryKey a = Int
@@ -28,49 +37,117 @@ class
   type UniqueKeys a :: [Symbol]
   type UniqueKeys a = '[]
 
-  type ForeignKeys a :: [(Symbol, Type)]
+  type ForeignKeys a :: TableFieldsKind
   type ForeignKeys a = '[]
 
   type TableName a :: Symbol
   type TableName a = HasTableName (Rep a)
 
-  table :: Proxy a -> Table (TableFields a)
+  type TableDefaults a :: [Symbol]
+  type TableDefaults a = '[]
 
-  getTableName :: Proxy a -> String
-  default getTableName :: KnownSymbol (TableName a) => Proxy a -> String
-  getTableName _ = symbolVal (Proxy @(TableName a))
+  genTableEntity :: Table (TableFields a)
 
-  default table
+  default genTableEntity
     :: HasTable (TableFields a)
-    => Proxy a -> Table (TableFields a)
-  table _ = getTable (Proxy @(TableFields a))
+    => Table (TableFields a)
+  genTableEntity = mkTable @(TableFields a)
 
+  defaultKeys :: DefaultKeysRec (GetTableDefs (TableDefaults a) (TableFields a))
+  default defaultKeys
+     :: (GetTableDefs (TableDefaults a) (TableFields a) ~ '[])
+     => DefaultKeysRec  (GetTableDefs (TableDefaults a) (TableFields a))
+  defaultKeys = Nil
 
-type family GTableFields (ts :: [(Symbol, Type)]) (rep :: Type -> Type) :: [(Symbol, Type)] where
-  GTableFields ts (S1 ('MetaSel ('Just name) _b _c _d ) (K1 _i a) ) = '( name, a ) ': ts
+  getSqlColumns :: NonEmpty SqlColumn -- TODO: should be a NonEmpty
+  default getSqlColumns :: forall uniqueKeys foreignKeys primaryField primaryType defaultKeys
+   . ( Generic a
+     , HasEntity a
+     , uniqueKeys ~ UniqueKeys a
+     , foreignKeys ~ GetForeignKeyValues (ForeignKeys a)
+     , defaultKeys ~ GetTableDefs (TableDefaults a) (TableFields a)
+     , '(primaryField, primaryType) ~ PrimaryKeyField a
+     , HasSqlType primaryType
+     , HasNumericalType primaryType
+     , KnownSymbol primaryField
+     , GHasSqlColumns (Rep a) uniqueKeys foreignKeys defaultKeys
+     )
+   => NonEmpty SqlColumn
+  getSqlColumns = primaryCol
+    NE.:|
+    gSqlColumns (Proxy @(Rep a)) (Proxy @uniqueKeys) (Proxy @foreignKeys) (defaultKeys @a)
+    where
+      primaryCol :: SqlColumn
+      primaryCol = SqlColumn
+        { colName  = symbolText @primaryField
+        , colType  = getSqlType @primaryType
+        , colAttrs = catMaybes [addAutoIncrement, Just Primary]
+        }
 
-  GTableFields ts (a :*: b) = (GTableFields '[] a ++ GTableFields '[] b) ++ ts
+      addAutoIncrement :: Maybe Attribute
+      addAutoIncrement = if isNumerical (Proxy @primaryType)
+        then Just AutoIncrement else Nothing
 
-  GTableFields ts (l :+: r) = TypeError ('Text "Sum types are not supported as table records")
+  getTableName :: Text
+  default getTableName :: KnownSymbol (TableName a) => Text
+  getTableName = symbolText @(TableName a)
 
-  GTableFields ts (C1 _ a) = GTableFields ts a
+  mkTableDefinition :: TableDefinition
+  mkTableDefinition = TableDefinition (getTableName @a) (getSqlColumns @a)
 
-  GTableFields ts (D1 _ a) = GTableFields ts a
+type family HasPrimaryKey (pk :: (Symbol, Type)) :: Bool where
+   HasPrimaryKey '(f, a) = 'True
+   HasPrimaryKey _ = 'False
 
+type family GetTableFieldFromEntity (ts :: [(Symbol, Type)]) (rep :: Type -> Type) :: [(Symbol, Type)] where
+  GetTableFieldFromEntity ts (S1 ('MetaSel ('Just fieldName) _b _c _d ) (K1 _i fieldType) )
+    = '(fieldName, fieldType) ': ts
+
+  GetTableFieldFromEntity ts (a :*: b)
+    = (GetTableFieldFromEntity '[] a ++ GetTableFieldFromEntity '[] b) ++ ts
+
+  GetTableFieldFromEntity ts (l :+: r) = TypeError ('Text "Sum types are not supported as table fields")
+
+  GetTableFieldFromEntity ts (C1 _ a) = GetTableFieldFromEntity ts a
+
+  GetTableFieldFromEntity ts (D1 _ a) = GetTableFieldFromEntity ts a
 
 -- | Make sure provided unique keys are with in the table
-type family UniqueConstraint (ts :: [Symbol]) (table :: [(Symbol, Type)]) :: Constraint where
-  UniqueConstraint _ _ = () -- TODO: implement me
+type family UniqueConstraints (ts :: [Symbol]) (a :: Type) :: Constraint where
+  UniqueConstraints '[] _ = ()
+  UniqueConstraints (x ': xs) a = (IsTableField x (TableFields a), UniqueConstraints xs a)
 
--- | Make sure provided keys with in the table exists
-type family ForeignKeyConstraint (ts :: [ (Symbol, Type) ]) (table :: [(Symbol, Type)]) :: Constraint where
-  ForeignKeyConstraint _ _ = () -- TODO: implement me
+-- | Make sure provided keys exist with in current table and reference table
+type family ForeignKeyConstraints (ts :: TableFieldsKind) (table :: Type) :: Constraint where
+  ForeignKeyConstraints ( '( field, ForeignKeyReferencedTable refTable refCol ) ': ts ) a =
+        ( HasEntity refTable
+        , IsTableField field (TableFields a)
+        , HasUniqueForeignParentField refCol (UniqueKeys refTable)
+        )
+  ForeignKeyConstraints '[] a = ()
+
+type family HasUniqueForeignParentField (pfield :: Symbol) (parentUniques :: [Symbol]) :: Constraint where
+  HasUniqueForeignParentField x ( x ': xs) = ()
+  HasUniqueForeignParentField x ( y ': xs) = (HasUniqueForeignParentField x xs)
+  -- TODO: better error msg
+  HasUniqueForeignParentField x '[] = TypeError ('Text "Parent Foreign field should be Unique")
 
 type family HasTableName (rep :: k -> Type) :: Symbol where
   HasTableName (D1 ('MetaData name _ _ _) _) =  name
   HasTableName _  = TypeError ('Text "GHC error: Wrong provided data type")
 
-type family IsTableField (field :: Symbol) (ts :: [(Symbol, Type)]) :: Symbol where
-   IsTableField x '[] = TypeError ('Text "Error provided type is not in list")
-   IsTableField x ( '(x, t) ': ts) = x
+type family IsTableField (field :: Symbol) (ts :: [(Symbol, Type)]) :: Constraint where
+   IsTableField x '[] = TypeError ('Text "Provided field Name is not part of the database table record")
+   IsTableField x ( '(x, t) ': ts) = ()
    IsTableField x ( '(s, t) ': ts ) = IsTableField x ts
+
+type family GetForeignKeyValues (a :: TableFieldsKind) :: [(Symbol, Symbol, Symbol)] where
+  GetForeignKeyValues ( '(f, ForeignKeyReferencedTable a s) ': ts) = '(f, TableName a, s) ': GetForeignKeyValues ts
+  GetForeignKeyValues '[] = '[]
+
+-- | Get the corresponding type for each provided default symbol
+type family GetTableDefs (ts :: [Symbol]) (fs :: [(Symbol, Type)]) :: [(Symbol, Type)] where
+  -- TODO: UTCTime or TimeTypes should map to a Textual values
+  -- for which we can have pattern synonyms such as TIME_STAMP
+  GetTableDefs ( s ': ts ) fs = GetField fs s ': GetTableDefs ts fs
+  GetTableDefs '[]  _  = '[]

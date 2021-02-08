@@ -1,49 +1,52 @@
-{-# LANGUAGE InstanceSigs     #-}
-{-# LANGUAGE TypeApplications #-}
 module Squid.DataBase.Table where
 
-import Data.Kind (Type)
-import Data.Proxy
-import GHC.OverloadedLabels
-import GHC.TypeLits
+import GHC.OverloadedLabels ( IsLabel(..) )
 
-import Squid.DataBase.TypeLevel
-import Squid.DataBase.Column
+import Squid.Prelude
+import Squid.DataBase.TypeLevel ( GetField, type (++) )
 
 infixr 7 :.
 
-data Table (a :: [(Symbol, Type)]) where
-  Nil  :: Table '[]
-  (:.) :: Column x -> Table xs -> Table (x ': xs)
+type SqlTableName = Text -- Maybe newtype
 
--- | inductively create a Table out of a list of types
+type TableFieldKind = (Symbol, Type)
+
+type TableFieldsKind = [TableFieldKind]
+
+data TableField (a :: TableFieldKind) = TableField
+
+data QueryFieldValue (a :: Type) = QFieldName Text | QValue a
+
+-- | We are redefining a type similar to Rec from Vinyl, with a reason of avoiding having
+-- orphan instances for the 'IsLabel' class.
+--
+data Table (a :: TableFieldsKind) where
+  TNil :: Table '[]
+  (:.) :: TableField x -> Table xs -> Table (x ': xs)
+
+-- | For inductively constructing a table
+--
 class HasTable (ts :: [(Symbol, Type)]) where
-  getTable :: Proxy ts -> Table ts
+  mkTable :: Table ts
 
 instance HasTable '[] where
-  getTable _ = Nil
+  mkTable = TNil
 
-instance HasTable ts =>  HasTable ( '(s, t) ': ts) where
-  getTable _ = col :. getTable (Proxy @ts)
-    where
-      col :: Column '(s, t)
-      col = Column
+instance HasTable ts
+  =>  HasTable ('(fieldName, fieldType) ': ts) where
+  mkTable = TableField @'(fieldName, fieldType) :. mkTable @ts
 
--- | add to 2 tables
+-- | Add two tables
 addTables :: Table ts -> Table xs -> Table (ts ++ xs)
 addTables = \case
-  Nil -> id
-  ( x :. xs) -> \ ys -> x :. addTables xs ys
-
--- * Table Column accessors
-infixr 7 ^.
-
--- | Access Table in lens like style
-(^.) :: Table ts -> ColumnLabel a -> Column (ColumnType ts a)
-_ ^.  _ = Column
+  TNil       -> id
+  ( x :. xs) -> \ys -> x :. addTables xs ys
 
 -- | Access Table fields using Overloaded labels
-instance (ColumnType xs s ~ ts)
-  => IsLabel (s :: Symbol) (Table xs -> Column ts) where
-  fromLabel :: Table xs -> Column ts
-  fromLabel _ = Column
+instance
+  ( GetField fieldPairs fieldName ~ a
+  )
+  => IsLabel (fieldName :: Symbol) (Table fieldPairs -> TableField a) where
+
+  fromLabel :: Table fieldPairs -> TableField a
+  fromLabel _ = TableField

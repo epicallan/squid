@@ -1,98 +1,79 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DerivingVia #-}
 module Squid.DataBase.SqlStatement where
 
-import Data.String
-import Data.Text
-import qualified Data.Text as T
+import Squid.Prelude
 
-import Squid.DataBase.HasSqlField
-import Squid.DataBase.Column
+import Squid.DataBase.HasFieldValues
+import Squid.DataBase.SqlColumn
+import Squid.DataBase.Table
 
--- | for each data type used as a Model we obtain a type level list
--- containing its fields and related type. See HasEntity class
 data RelationOp = QEq | QGT | QLT
   deriving (Eq)
 
-instance Show RelationOp where
-  show = \case
-    QEq -> "="
-    QGT -> ">"
-    QLT -> "<"
+newtype CreateSql = CreateSql { unCreateSql :: Text }
+  deriving (Monoid, Semigroup) via Text
 
-data FieldValue where
-  FieldValue :: forall a . HasSqlField a => a -> FieldValue
+newtype RawStatement = RawStatement { unRawStatement :: Text }
+   deriving (Monoid) via Text
+
+instance Semigroup RawStatement where
+  (RawStatement a) <> (RawStatement b) = RawStatement (a <> " ; " <> b)
+
+relationOpSymbol :: RelationOp -> Text
+relationOpSymbol = \case
+  QEq -> "="
+  QGT -> ">"
+  QLT -> "<"
+
+type TableColumnPair = (SqlTableName,  ColumnName)
 
 data RelationAction = RelationAction
-  { raOp :: RelationOp
-  , rafieldName :: ColumnName
+  { raOp          :: RelationOp
+  , raFieldName   :: ColumnName
   , raActionValue :: FieldValue
   }
 
 data SqlQueryType =
     SelectQuery
   | InsertQuery
-  | UpdateQuery
+  | RawQuery
   deriving (Eq)
 
-instance Show SqlQueryType where
-  show = \case
-    SelectQuery -> "select"
-    InsertQuery -> "insert"
-    UpdateQuery -> "update"
+-- TODO: should use a conversion class
+--
+sqlQueryTypeText :: SqlQueryType -> Text
+sqlQueryTypeText = \case
+  SelectQuery -> "SELECT"
+  InsertQuery -> "INSERT"
+  RawQuery    -> mempty
 
 data SqlStatement = SqlStatement
-  { sqlTable     :: Text
-  , sqlWhere     :: [RelationAction]
+  { sqlWhere     :: [RelationAction]
   , sqlInserts   :: [FieldValue]
+  , sqlCreate    :: CreateSql
+  , sqlRaw       :: RawStatement
   , sqlQueryType :: SqlQueryType
   }
 
-newtype QueryStatement = QueryStatement { unQueryStatement :: Text }
+newtype TypedSqlStatement = TypedSqlStatement Text
   deriving (Show, Eq)
 
-newtype QueryAction = QueryAction { unQueryAction :: Text }
-  deriving (Show, Eq)
-  deriving Semigroup via Text
-  deriving Monoid via Text
-
-newtype SubQuery = SubQuery { unSubQuery :: Text }
+newtype TypedQueryParams = TypedQueryParams { unTypedQueryAction :: Text }
   deriving (Show, Eq)
   deriving Semigroup via Text
   deriving Monoid via Text
 
-data SqlQuery = SqlQuery
-  { sqStatement :: QueryStatement
-  , sqValues :: [FieldValue]
+-- TODO: maybe rename
+newtype TypedSubQuery = TypedSubQuery { unTypedSubQuery :: Text }
+  deriving (Show, Eq)
+  deriving Semigroup via Text
+  deriving Monoid via Text
+
+-- | The sql we finally send to the DB
+data TypedSqlQuery = TypedSqlQuery
+  { sqStatement :: TypedSqlStatement
+  , sqValues    :: [FieldValue]
   }
 
-defaultStatement :: SqlStatement
-defaultStatement = SqlStatement mempty [] [] SelectQuery
-
--- | TODO: should be more general
-getActionValues :: SqlStatement -> [FieldValue]
-getActionValues SqlStatement {..} = raActionValue <$> sqlWhere
-
--- | TODO: should be more general
-getAction :: SqlStatement -> QueryAction
-getAction SqlStatement {..} = QueryAction $ " where " <> actions
-  where
-    actions =  T.intercalate " and " $ extractQuery <$> sqlWhere
-    extractQuery (RelationAction op fname _) = fname <> " " <> fromString (show op) <> " ? "
-
--- | TODO: should take in a list of column names in preferred order
--- such that ordering is explicit
-getSubQuery :: SqlStatement -> SubQuery
-getSubQuery SqlStatement {..} = case sqlQueryType of
-  SelectQuery -> SubQuery $ fromString (show sqlQueryType) <> " * from " <> sqlTable
-  _           -> error "TODO"
-
-mkQueryStatement :: SubQuery -> QueryAction -> QueryStatement
-mkQueryStatement (SubQuery x) (QueryAction y) = QueryStatement $ x <> y
-
-sqlQuery :: SqlStatement -> SqlQuery
-sqlQuery x  =
-  let subQuery = getSubQuery x
-      action = getAction x
-      actionValues = getActionValues x
-  in  SqlQuery (mkQueryStatement subQuery action) actionValues
+mkDefStatement :: SqlQueryType -> SqlStatement
+mkDefStatement queryType
+  = SqlStatement mempty mempty mempty mempty queryType

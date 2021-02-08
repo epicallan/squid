@@ -1,12 +1,20 @@
+{-# LANGUAGE TypeFamilyDependencies #-}
 module Squid.Client.RunClient where
 
-import Data.Proxy
+import Squid.Prelude
 
 import Squid.DataBase
 
-type SqlResults a = [Entity a]
+-- | Execute represents commands such as Insert
+-- while Query represents select.
+--
+data PersistType = Execute | ExecuteVoid | Query
 
-class Monad m => RunClient entity m where
+class Monad m => RunClient sqlEntity (persistType :: PersistType) m where
+  type SqlResults sqlEntity persistType = (result :: Type) | result -> persistType
+  -- ^^ This seems to imply we can only have one result type for
+  -- each PersistType  ??
+
   runClient
-    :: HasEntity entity
-    => Proxy entity -> Sql entity () -> m (SqlResults entity)
+    :: Sql sqlEntity ()
+    -> m (SqlResults sqlEntity persistType)

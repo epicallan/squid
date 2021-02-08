@@ -1,33 +1,40 @@
+{-# LANGUAGE StandaloneDeriving #-}
 module Squid.Postgres.Entity where
 
 import Data.Kind
-import Database.PostgreSQL.Simple.FromField
-import Database.PostgreSQL.Simple.FromRow
-import Database.PostgreSQL.Simple.ToField (Action, ToField (..))
-import qualified Database.PostgreSQL.Simple.ToField as A
+import GHC.Generics
 
 import Squid.Client
 
-data (p :: Type) ::: (a :: Type) = p ::: a
+import qualified Database.PostgreSQL.Simple.FromField as PG
+import qualified Database.PostgreSQL.Simple.FromRow   as PG
 
-instance (FromField t, FromRow a)
-  => FromRow ( t ::: a) where
-  fromRow = (:::) <$> field <*> fromRow
+-- | Returned DB record/resource with primaryKey
+data Entity a = Entity
+  { entityId  :: PrimaryKey a
+  , entityVal :: a
+  }
 
-newtype SqlFieldWrapper = SqlFieldWrapper SqlField
+deriving instance (Show a, Show (PrimaryKey a)) => Show (Entity a)
 
-instance ToField SqlFieldWrapper where
-  toField (SqlFieldWrapper x) = case x of
-    Plain b  -> A.Plain b
-    Escape b -> A.Escape b
+deriving instance (Eq a, Eq (PrimaryKey a)) => Eq (Entity a)
 
-toSqlAction :: FieldValue -> Action
-toSqlAction = \case
-  FieldValue x -> toField . SqlFieldWrapper $ toSqlField x
+deriving instance (Ord a, Ord (PrimaryKey a)) => Ord (Entity a)
 
+deriving instance Generic (Entity a)
 
--- | Migration
-{-
- runMigrate :: All HasEntity ts => Proxy ts -> Proxy (TableFields ts)
- run 
--}
+-- | TODO: we may have to increase the number of tuple instances for FromRow class
+-- maybe with template haskell or manually.
+type family GetDbRowEntities (a :: Type) :: Type where
+  GetDbRowEntities (a, b) = (Entity a, Entity b)
+  GetDbRowEntities a = Entity a
+
+instance (pid ~ PrimaryKey a, PG.FromRow a, PG.FromField pid)
+  => PG.FromRow (Entity a) where
+  fromRow = Entity <$> PG.field <*> PG.fromRow
+
+-- | TODO: write more instances
+instance {-# Overlapping #-}
+  (ida ~ PrimaryKey a, idb ~ PrimaryKey b, PG.FromRow a, PG.FromRow b, PG.FromField ida, PG.FromField idb)
+  => PG.FromRow (Entity a, Entity b) where
+  fromRow = (,) <$> PG.fromRow <*> PG.fromRow

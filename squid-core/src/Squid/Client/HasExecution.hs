@@ -12,6 +12,8 @@ class HasExecution a where
   default insertCmd :: HasFieldValues a => a -> Sql entity ()
   insertCmd entity = insert_ (fieldValues entity)
 
+instance (HasFieldValues a) => HasExecution a
+
 insert
   :: forall a m . (RunClient a 'Execute m, HasExecution a)
   => a

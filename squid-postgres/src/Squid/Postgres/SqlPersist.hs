@@ -70,11 +70,10 @@ postgresQuery
   -> m [a]
 postgresQuery tables config statement = do
   let  (pgStatement, values) = buildQuery tables statement
-  case sqlConnection config of -- TODO: get connection before hand so that we dont have a maybe
-    Nothing   -> error "Provide connection" -- TODO: throw Error
-    Just conn -> do
-      liftIO $ print pgStatement
-      liftIO $ PG.query conn pgStatement values
+  when (sqlLogging config == Enabled) $ do
+    liftIO $ print pgStatement
+    liftIO $ print values
+  liftIO $ PG.query (sqlConnection config) pgStatement values
 
 -- returns affected rows
 postgresExecute
@@ -85,12 +84,10 @@ postgresExecute
   -> m Int
 postgresExecute tables config statement = do
   let  (pgStatement, values) = buildQuery tables statement
-  case sqlConnection config of -- TODO: get connection before hand so that we don't have a maybe
-    Nothing   -> error "Provide connection" -- TODO: throw Error
-    Just conn -> do
-      liftIO $ print pgStatement
-      rowCount <- liftIO $ PG.execute conn pgStatement values
-      return $ fromIntegral @Int64 @Int rowCount
+  when (sqlLogging config == Enabled) $
+    liftIO $ print pgStatement
+  rowCount <- liftIO $ PG.execute (sqlConnection config) pgStatement values
+  return $ fromIntegral @Int64 @Int rowCount
 
 postgresExecute_
   :: MonadIO m
@@ -99,11 +96,9 @@ postgresExecute_
   -> m ()
 postgresExecute_  config statement = do
   let  pgStatement = buildQuery_  (Proxy @'RawQuery) statement
-  case sqlConnection config of
-    Just conn -> do
-      liftIO $ print pgStatement
-      liftIO $ void $ PG.execute_ conn pgStatement
-    _         -> error "Provide connection"
+  when (sqlLogging config == Enabled) $
+    liftIO $ print pgStatement
+  liftIO $ void $ PG.execute_ (sqlConnection config) pgStatement
 
 buildQuery
   :: NonEmpty TableDefinition

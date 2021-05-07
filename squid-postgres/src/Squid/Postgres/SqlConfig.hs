@@ -3,11 +3,14 @@ module Squid.Postgres.SqlConfig where
 import Control.Retry (RetryPolicy, retryPolicyDefault)
 import Database.PostgreSQL.Simple
 
+data SqlLogging = Enabled | Disabled
+  deriving stock (Eq)
+
 data SqlConfig = SqlConfig
-  { sqlConnection  :: Maybe Connection
+  { sqlConnection  :: Connection
   , sqlRetryPolicy :: RetryPolicy
-  -- logging options
+  , sqlLogging     :: SqlLogging
   }
 
-defaultConfig :: SqlConfig
-defaultConfig = SqlConfig Nothing retryPolicyDefault
+defaultConfig :: Connection -> SqlConfig
+defaultConfig conn = SqlConfig conn retryPolicyDefault Disabled

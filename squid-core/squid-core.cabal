@@ -44,7 +44,7 @@ library
     , Squid.Client.SqlWriter
     , Squid.DataBase.SqlColumn
 
-  default-extensions: LambdaCase DeriveGeneric DefaultSignatures DeriveFunctor  DerivingVia FlexibleInstances
+  default-extensions: LambdaCase DeriveGeneric DefaultSignatures DeriveFunctor  DerivingVia DeriveAnyClass FlexibleInstances
     FlexibleContexts ScopedTypeVariables TypeApplications TypeOperators MultiParamTypeClasses
     RecordWildCards TypeApplications TypeFamilies OverloadedStrings GADTs
     GeneralizedNewtypeDeriving FunctionalDependencies ConstraintKinds RankNTypes

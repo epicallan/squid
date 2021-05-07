@@ -7,7 +7,7 @@ import Squid.DataBase.SqlColumn
 import Squid.DataBase.Table
 
 data RelationOp = QEq | QGT | QLT
-  deriving (Eq)
+  deriving stock (Eq, Show)
 
 newtype CreateSql = CreateSql { unCreateSql :: Text }
   deriving (Monoid, Semigroup) via Text

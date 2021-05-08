@@ -25,6 +25,7 @@ deriving instance Generic (Entity a)
 
 type family GetDbRowEntities (a :: Type) :: Type where
   GetDbRowEntities (a, b) = (Entity a, Entity b)
+  -- add instance for JOIN operators
   GetDbRowEntities a = Entity a
 
 instance (pid ~ PrimaryKey a, PG.FromRow a, PG.FromField pid)

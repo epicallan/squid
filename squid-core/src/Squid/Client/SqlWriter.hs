@@ -34,8 +34,9 @@ sqlWriter tableDefinitions stmt
 --
 getParamValues :: SqlStatement -> [FieldValue]
 getParamValues SqlStatement {..} = case sqlQueryType of
-  InsertQuery -> sqlInserts
-  _           -> []
+  InsertQuery  -> sqlInserts
+  SelectQuery  -> raActionValue <$> sqlWhere
+  _            -> []
 
 rawWriter
   :: Proxy 'RawQuery
@@ -61,7 +62,7 @@ insertValueParams
 insertValueParams TableDefinition {..}
   = TypedQueryParams $ " VALUES (" <> insertAction <> ") "
   where
-    insertAction = Text.concat $ "," <$ NE.toList tableColumns
+    insertAction = Text.intersperse ',' $ Text.concat $ "?" <$ NE.init tableColumns
 
 selectQueryParams
   :: SqlStatement
@@ -92,6 +93,9 @@ selectSubQuery
 selectSubQuery tableDefinitions
   = TypedSubQuery $ "SELECT " <> tablesColumnString  <> " FROM " <> tables
   where
+    getTableColumnString :: TableDefinition -> Text
+    getTableColumnString TableDefinition{..} = tableColumnsString tableName $ NE.toList tableColumns
+
     tables
       = Text.intercalate ","
       . NE.toList
@@ -101,18 +105,20 @@ selectSubQuery tableDefinitions
     tablesColumnString
       = Text.intercalate ","
       . NE.toList
-      $ tableColumnString <$> tableDefinitions
+      $ getTableColumnString <$> tableDefinitions
 
 insertSubQuery :: TableDefinition -> TypedSubQuery
-insertSubQuery table@TableDefinition {..}
+insertSubQuery TableDefinition {..}
   = TypedSubQuery
-  $ "INSERT INTO " <> tableName <> " (" <> tableColumnString table <> ")"
+  $ "INSERT INTO " <> tableName <> " (" <> tableColumns' <> ")"
+  where
+    tableColumns' = Text.intercalate "," $ colName <$> NE.filter ((/= "id") . colName) tableColumns
 
-tableColumnString :: TableDefinition -> Text
-tableColumnString TableDefinition{..} = Text.intercalate "," columnsWithTable
+tableColumnsString :: SqlTableName -> [SqlColumn] -> Text
+tableColumnsString tableName tableColumns = Text.intercalate "," columnsWithTable
   where
     columnsWithTable :: [Text]
-    columnsWithTable = NE.toList $ fmap (columnWithTable tableName) tableColumns
+    columnsWithTable = fmap (columnWithTable tableName) tableColumns
 
     columnWithTable :: SqlTableName -> SqlColumn -> Text
     columnWithTable tableName' column = tableName' <> "." <> colName column
